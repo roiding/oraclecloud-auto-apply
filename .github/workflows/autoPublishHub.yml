@@ -36,7 +36,6 @@ jobs:
               echo LATEST_TAG=maodou38/${{ github.repository_name }}:latest >> $GITHUB_ENV
             fi
       - name: 构建Docker镜像
-        if: github.ref == 'refs/tags/v*'
         run: |
           if [ -n "${{ env.VERSION_TAG }}" ]; then
             docker buildx build \
