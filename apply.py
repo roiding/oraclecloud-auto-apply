@@ -12,7 +12,7 @@ import base64
 USE_TG = os.environ.get('USE_TG', False)
 TG_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN', '')
 TG_USER_ID = os.environ.get('TG_USER_ID', '')
-TG_API_HOST = os.environ.get('TG_API_HOST', '')
+TG_API_HOST = os.environ.get('TG_API_HOST', 'api.telegram.org')
 
 
 def telegram(desp):
@@ -322,7 +322,7 @@ class InsCreate:
 
 
 if __name__ == "__main__":
-    user = OciUser(configfile="/Users/roiding/GitProjects/oraclecloud-auto-apply/.oci/config")
+    user = OciUser(configfile="/.oci/config")
     path = sys.argv[1]
     ins = InsCreate(user, path)
     ins.create()
