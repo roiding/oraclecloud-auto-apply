@@ -36,17 +36,19 @@ jobs:
               echo LATEST_TAG=maodou38/${{ github.repository_name }}:latest >> $GITHUB_ENV
             fi
       - name: 构建Docker镜像
-        if: needs.package-and-make-image.outputs.buildx != 'failure'
+        if: github.ref == 'refs/tags/v*'
         run: |
-          docker buildx build \
-            --platform linux/amd64,linux/arm64,linux/arm/v7 \
-            -t ${{ env.LATEST_TAG }} \
-            -t ${{ env.VERSION_TAG }} \
-            .
-      - name: 推送Docker镜像
-        if: needs.package-and-make-image.outputs.buildx != 'failure'
-        run: |
-          docker push ${{ env.LATEST_TAG }}
           if [ -n "${{ env.VERSION_TAG }}" ]; then
-            docker push ${{ env.VERSION_TAG }}
+            docker buildx build \
+              --platform linux/amd64,linux/arm64,linux/arm/v7 \
+              -t ${{ env.LATEST_TAG }} \
+              -t ${{ env.VERSION_TAG }} \
+              --push \
+              .
+          else
+            docker buildx build \
+              --platform linux/amd64,linux/arm64,linux/arm/v7 \
+              -t ${{ env.LATEST_TAG }} \
+              --push \
+              .
           fi
