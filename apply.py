@@ -13,6 +13,8 @@ USE_TG = os.environ.get('USE_TG', False)
 TG_BOT_TOKEN = os.environ.get('TG_BOT_TOKEN', '')
 TG_USER_ID = os.environ.get('TG_USER_ID', '')
 TG_API_HOST = os.environ.get('TG_API_HOST', 'api.telegram.org')
+MAX_WAIT_TIME = os.environ.get('MAX_WAIT_TIME', 300)
+MIN_WAIT_TIME = os.environ.get('MIN_WAIT_TIME', 30)
 
 
 def telegram(desp):
@@ -197,7 +199,7 @@ class FileParser:
 
 class InsCreate:
     shape = 'VM.Standard.A1.Flex'
-    sleep_time = 5.0
+    sleep_time = MIN_WAIT_TIME
     try_count = 0
     desp = ""
 
@@ -233,8 +235,8 @@ class InsCreate:
                 if e.status == 429 and e.code == 'TooManyRequests' and e.message == 'Too many requests for the user':
                     # 被限速了，改一下时间
                     print("请求太快了，自动调整请求时间ing")
-                    if self.sleep_time < 60:
-                        self.sleep_time += 10
+                    if self.sleep_time < MAX_WAIT_TIME:
+                        self.sleep_time += 20
                 elif not (e.status == 500 and e.code == 'InternalError'
                           and e.message == 'Out of host capacity.'):
                     if "Service limit" in e.message and e.status==400:
@@ -248,8 +250,8 @@ class InsCreate:
                 else:
                     # 没有被限速，恢复减少的时间
                     print("目前没有请求限速,快马加刷中")
-                    if self.sleep_time > 15:
-                        self.sleep_time -= 10
+                    if self.sleep_time > MIN_WAIT_TIME:
+                        self.sleep_time -= 20
                 print("本次返回信息:",e)
                 time.sleep(self.sleep_time)
             else:
