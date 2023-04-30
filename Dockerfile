@@ -7,7 +7,7 @@ COPY requirements.txt .
 ARG TARGETPLATFORM
 # https://github.com/pyca/cryptography/issues/6347#issuecomment-932082093的解决方案
 # 官方认为是qemu在arm架构下的文件限制导致无法正确安装cryptography
-RUN --security-opt=insecure if [[ "$TARGETPLATFORM" == "linux/arm"* ]]; then \
+RUN --security=insecure if [[ "$TARGETPLATFORM" == "linux/arm"* ]]; then \
     mkdir -p /root/.cargo && \
     chmod 777 /root/.cargo && \
     mount -t tmpfs none /root/.cargo \
