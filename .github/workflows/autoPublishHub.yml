@@ -29,6 +29,7 @@ jobs:
         run: |
           if [ -n "${{ steps.version_step.outputs.version_tag }}" ]; then
             echo VERSION_TAG=$(echo ${{ steps.version_step.outputs.version_tag }} | tr '[:upper:]' '[:lower:]') >> $GITHUB_ENV
+          ;fi
       - name: 构建通过打标签构建的镜像
         # 如果$GITHUB_ENV中的VERSION_TAG存在
         if: env.VERSION_TAG != ''
