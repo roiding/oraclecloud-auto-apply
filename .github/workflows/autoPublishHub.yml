@@ -22,4 +22,4 @@ jobs:
           context: .
           push: true
           tags: |
-            maodou38/${{ github.event.repository.name }} :latest
+            maodou38/${{ github.event.repository.name }}:latest
