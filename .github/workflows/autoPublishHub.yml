@@ -39,14 +39,14 @@ jobs:
         run: |
           if [ -n "${{ env.VERSION_TAG }}" ]; then
             docker buildx build \
-              --platform linux/amd64,linux/arm64,linux/arm/v7 \
+              --platform linux/arm/v7 \
               -t ${{ env.LATEST_TAG }} \
               -t ${{ env.VERSION_TAG }} \
               --push \
               .
           else
             docker buildx build \
-              --platform linux/amd64,linux/arm64,linux/arm/v7 \
+              --platform linux/arm/v7 \
               -t ${{ env.LATEST_TAG }} \
               --push \
               .
