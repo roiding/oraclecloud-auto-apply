@@ -1,6 +1,2 @@
-.venv
+.claude
 .DS_Store
-main.tf
-.oci
-.vscode
-

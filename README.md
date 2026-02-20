@@ -1,35 +1,53 @@
-## [起源]
-油管上流行的是用`R探长`的一个客户端程序，UP主看了看好像这个程序在github上都是一堆markdown，也没有开源源码，加之相当于还在点对点连到了`R探长`的服务器上去，那他的权限可太大了，不太放心，所以还是找了一个开源了代码的，确保安全。
-然后为了代码洁癖性吧，不喜欢在真机环境直接跑python，就封装了一个docker镜像，做了一点小的修改
-## [鸣谢]
+# OCI A1 Instance Auto Grab
 
-本文基本就是复用了[n0thing2speak](https://github.com/n0thing2speak/oracle_arm)的申请脚本，并将一些参数进行了环境变量改造，构建成了docker镜像
+利用 GitHub Actions 定时自动抢占 Oracle Cloud 免费 A1 (ARM) 实例，并渐进式扩容到满配。
 
-## [使用]
+## 背景
 
-1. 网上有教程的，把自己的`oci`的config文件构建出来，注意其中的`key_file`路径为镜像挂载后的路径(不用像`n0thing2speak`一样安装oci，只需要把oci文件手动填出来就行，网上有教程)
-2. `n0thing2speak`有介绍如何生成`main.tf`,我就不赘述了
-3. docker-compose文件参考如下:
-```yaml
-version: "3"
+Oracle Cloud 免费套餐提供 4 OCPU / 24GB 内存的 ARM (Ampere A1) 实例，但热门区域（如东京 ap-tokyo-1）资源紧张，手动创建经常遇到 "Out of host capacity" 错误。本项目通过定时任务自动重试，在资源释放时抢占实例。
 
-services:
-oci-auto-apply:
-        image: maodou38/oraclecloud-auto-apply
-        volumes:
-        - /home/opc/oraclecloud-auto-apply/oci:/.oci #/.oci和/main.tf是固定路径 我因为是保持着oci程序生成配置文件的格式，我只需要挂在文件夹，大家可能还有一个key.pub需要添加,只要知道默认读/.oci/config作为配置文件就行了
-        - /home/opc/oraclecloud-auto-apply/main.tf:/main.tf
-        restart: "no"
-        container_name: oraclecloud-auto-apply
-        environment:
-        - USE_TG=True
-        - TG_BOT_TOKEN=XXXXX
-        - TG_USER_ID=XXXXX
-        - TG_API_HOST=XXXXX
-        logging:
-        driver: "json-file"
-        options:
-            max-size: "10m"
-            max-file: "2"
-```
-其中的`TG_BOT_TOKEN`，`TG_USER_ID`,作者`n0thing2speak`也有讲如何找到，但他没有提到的是，你必须创建完bot后，手动自己给自己的bot发一条消息，不然是无法收到消息的。
+## 策略
+
+采用渐进式创建 + 扩容：
+
+1. **无实例** → 尝试创建 1C/6G（小规格更容易抢到）
+2. **已有 1C/6G** → 扩容到 2C/12G
+3. **已有 2C/12G** → 扩容到 4C/24G（满配）
+4. **已达 4C/24G** → 无需操作
+
+每次运行只执行一步，创建成功后等下次运行再扩容。
+
+## 定时调度
+
+东京时间凌晨 2:00 - 6:00（UTC 17:00 - 21:00），每 30 分钟运行一次。这是资源释放的高峰期。也支持手动触发（workflow_dispatch）。
+
+## 配置
+
+在仓库 Settings → Secrets and variables → Actions 中添加以下 Secrets：
+
+| Secret | 说明 | 获取方式 |
+|--------|------|----------|
+| `OCI_CLI_USER` | User OCID | Identity → Users → 你的用户 → OCID |
+| `OCI_CLI_TENANCY` | Tenancy OCID | Governance → Tenancy Details → OCID |
+| `OCI_CLI_FINGERPRINT` | API Key 指纹 | Identity → Users → API Keys → Fingerprint |
+| `OCI_CLI_KEY_CONTENT` | API 私钥内容 (PEM 格式) | 添加 API Key 时下载的私钥文件内容 |
+| `OCI_CLI_REGION` | 区域 | 如 `ap-tokyo-1` |
+| `OCI_COMPARTMENT_ID` | Compartment OCID | Identity → Compartments → OCID（无自定义则同 Tenancy OCID） |
+| `OCI_SUBNET_ID` | 子网 OCID | Networking → VCN → Subnets → OCID |
+| `OCI_AVAILABILITY_DOMAIN` | 可用域 | `oci iam availability-domain list` 查询 |
+| `OCI_IMAGE_ID` | ARM 镜像 OCID | Compute → Images，选择 Ampere (aarch64) 架构的镜像 |
+| `OCI_SSH_PUBLIC_KEY` | SSH 公钥 | `~/.ssh/id_rsa.pub` 或 `~/.ssh/id_ed25519.pub` 的内容 |
+
+## 使用
+
+1. Fork 本仓库
+2. 配置上述 Secrets
+3. 手动触发 workflow 测试：Actions → OCI A1 Instance Auto Grab → Run workflow
+4. 确认日志正常后，定时任务会自动运行
+
+## 注意事项
+
+- 每次失败（Out of capacity）都是正常的，workflow 不会报错退出
+- 扩容需要先停止实例再修改配置，会有短暂停机
+- 免费套餐总额度为 4 OCPU / 24GB，可以分配给 1~4 个实例
+- 本项目假设只创建 1 个实例并用满全部额度
