@@ -121,8 +121,8 @@ jobs:
               echo "本次创建完成，等待下次运行再扩容。"
               exit 0
             else
-              echo "创建失败（可能 Out of capacity）:"
-              echo "$CREATE_RESULT" | tail -5
+              echo "创建失败:"
+              echo "$CREATE_RESULT" | jq -r '.code // empty, .message // empty' 2>/dev/null || echo "$CREATE_RESULT"
               echo "下次运行将重试。"
               exit 0
             fi
@@ -201,8 +201,8 @@ jobs:
           if echo "$UPDATE_RESULT" | jq -e '.data.id' > /dev/null 2>&1; then
             echo "扩容成功! 新配置: ${NEXT_OCPUS}C / ${NEXT_MEMORY}G"
           else
-            echo "扩容失败（可能 Out of capacity）:"
-            echo "$UPDATE_RESULT" | tail -5
+            echo "扩容失败:"
+            echo "$UPDATE_RESULT" | jq -r '.code // empty, .message // empty' 2>/dev/null || echo "$UPDATE_RESULT"
           fi
 
           echo "启动实例..."
