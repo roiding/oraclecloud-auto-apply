@@ -2,24 +2,21 @@ name: OCI A1 Instance Auto Grab
 
 on:
   schedule:
-    # 东京时间凌晨 2:00-6:00 (UTC 17:00-21:00) 每30分钟
-    - cron: '0 17 * * *'
-    - cron: '30 17 * * *'
-    - cron: '0 18 * * *'
-    - cron: '30 18 * * *'
-    - cron: '0 19 * * *'
-    - cron: '30 19 * * *'
-    - cron: '0 20 * * *'
-    - cron: '30 20 * * *'
-    - cron: '0 21 * * *'
-    - cron: '30 21 * * *'
+    # 全天每 15 分钟尝试一次；每次运行只发起一次创建或扩容请求
+    - cron: '*/15 * * * *'
   workflow_dispatch:
+
+# 避免定时任务延迟后与下一次运行重叠，从而同时向 OCI 发起请求
+concurrency:
+  group: oci-a1-grab
+  cancel-in-progress: false
 
 jobs:
   grab-a1-instance:
     runs-on: ubuntu-latest
 
     env:
+      OCI_CLI_VENV: ${{ github.workspace }}/.cache/oci-cli-venv
       OCI_CLI_USER: ${{ secrets.OCI_CLI_USER }}
       OCI_CLI_TENANCY: ${{ secrets.OCI_CLI_TENANCY }}
       OCI_CLI_FINGERPRINT: ${{ secrets.OCI_CLI_FINGERPRINT }}
@@ -27,15 +24,35 @@ jobs:
       OCI_CLI_REGION: ${{ secrets.OCI_CLI_REGION }}
 
     steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache OCI CLI environment
+        id: oci-cli-cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.OCI_CLI_VENV }}
+          key: oci-cli-venv-${{ runner.os }}-${{ runner.arch }}-py3.11-v1
+
       - name: Cache pip packages
+        if: steps.oci-cli-cache.outputs.cache-hit != 'true'
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-oci-cli-${{ runner.os }}
+          key: pip-oci-cli-${{ runner.os }}-${{ runner.arch }}-py3.11
 
       - name: Install OCI CLI
+        if: steps.oci-cli-cache.outputs.cache-hit != 'true'
         run: |
-          pip install oci-cli
+          python -m venv --copies "$OCI_CLI_VENV"
+          "$OCI_CLI_VENV/bin/pip" install --upgrade pip oci-cli
+
+      - name: Add OCI CLI to PATH
+        run: |
+          echo "$OCI_CLI_VENV/bin" >> "$GITHUB_PATH"
+          "$OCI_CLI_VENV/bin/oci" --version
 
       - name: Configure OCI CLI
         run: |
@@ -64,8 +81,8 @@ jobs:
         run: |
           set +e  # 不因命令失败而退出
 
-          TARGET_OCPUS=4
-          TARGET_MEMORY=24
+          TARGET_OCPUS=2
+          TARGET_MEMORY=12
 
           # 扩容路径定义
           SCALE_OCPUS=(1 2)
